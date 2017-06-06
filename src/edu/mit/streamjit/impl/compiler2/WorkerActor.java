@@ -23,6 +23,8 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Table;
+
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -146,18 +148,18 @@ public final class WorkerActor extends Actor {
 	}
 
 	@Override
-	public int peek(int input) {
-		return worker().getPeekRates().get(input).max();
+	public Rate peek(int input) {
+		return worker().getPeekRates().get(input);
 	}
 
 	@Override
-	public int pop(int input) {
-		return worker().getPopRates().get(input).max();
+	public Rate pop(int input) {
+		return worker().getPopRates().get(input);
 	}
 
 	@Override
-	public int push(int output) {
-		return worker().getPushRates().get(output).max();
+	public Rate push(int output) {
+		return worker().getPushRates().get(output);
 	}
 
 	@Override
