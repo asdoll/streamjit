@@ -31,6 +31,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
+
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
 import java.util.ArrayList;
@@ -118,17 +120,17 @@ public final class Storage implements Comparable<Storage> {
 		return builder.build();
 	}
 
-	public int push() {
+	public Rate push() {
 		checkState(upstream().size() == 1, this);
 		return upstream().get(0).push(upstream().get(0).outputs().indexOf(this));
 	}
 
-	public int peek() {
+	public Rate peek() {
 		checkState(downstream().size() == 1, this);
 		return downstream().get(0).peek(downstream().get(0).inputs().indexOf(this));
 	}
 
-	public int pop() {
+	public Rate pop() {
 		checkState(downstream().size() == 1, this);
 		return downstream().get(0).pop(downstream().get(0).inputs().indexOf(this));
 	}
@@ -278,7 +280,7 @@ public final class Storage implements Comparable<Storage> {
 			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
 			if (maxIteration >= 0)
 				for (int input = 0; input < a.inputs().size(); ++input)
-					if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
+					if (a.inputs().get(input).equals(this) && (a.peek(input).max() > 0 || a.pop(input).max() > 0)) {
 						min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
 						max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
 					}
@@ -369,7 +371,7 @@ public final class Storage implements Comparable<Storage> {
 			int iterations = a.group().schedule().get(a) * externalSchedule.get(a.group());
 			for (int output = 0; output < a.outputs().size(); ++output)
 				if (a.outputs().get(output).equals(this))
-					this.throughput += iterations * a.push(output);
+					this.throughput += iterations * a.push(output).max();
 		}
 		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
