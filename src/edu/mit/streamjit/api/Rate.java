@@ -70,7 +70,7 @@ public final class Rate {
 	 * TODO: should this throw its own exception subclass to allow programmatic
 	 * access to min/max/avg?
 	 */
-	private static void throwIAE(int min, int max, int avg) {
+	public static void throwIAE(int min, int max, int avg) {
 		throw new IllegalArgumentException(
 				String.format("Illegal rate: [%s, %s, %s]",
 				stringizeRate(min),
@@ -129,6 +129,15 @@ public final class Rate {
 		int avg = (a.avg() == DYNAMIC || b.avg() == DYNAMIC) ? DYNAMIC : a.avg() + b.avg();
 		return create(min, max, avg);
 	}
+	
+	public static Rate multiply(Rate a, int b) {
+		if(a.avg()!=DYNAMIC){
+			
+		return create(b*a.min(), b*a.max(), b*a.avg());
+		}
+		return create(b*a.min(), b*a.max());
+	}
+
 
 	/**
 	 * Returns the minimum rate.
@@ -224,5 +233,20 @@ public final class Rate {
 	 */
 	private static String stringizeRate(int x) {
 		return x == DYNAMIC ? "*" : Integer.toString(x);
+	}
+
+	public static void check(int min, int max, int avg) {
+		if (min < 0 && min != DYNAMIC)
+			throwIAE(min, max, avg);
+		if (max < 0 && max != DYNAMIC)
+			throwIAE(min, max, avg);
+		if (avg < 0 && avg != DYNAMIC)
+			throwIAE(min, max, avg);
+		if (!(min <= max))
+			throwIAE(min, max, avg);
+		if (min == max && min != DYNAMIC && avg != min)
+			throwIAE(min, max, avg);
+		if (min != DYNAMIC && max != DYNAMIC && avg != DYNAMIC && (avg < min || avg > max))
+			throwIAE(min, max, avg);
 	}
 }
