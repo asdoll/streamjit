@@ -21,16 +21,10 @@
  */
 package edu.mit.streamjit.api;
 
-import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
-import com.google.common.primitives.Primitives;
-import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.Buffers;
-import edu.mit.streamjit.impl.blob.PeekableBuffer;
-import edu.mit.streamjit.impl.common.InputBufferFactory;
-import edu.mit.streamjit.impl.common.NIOBuffers;
+import static com.google.common.base.Preconditions.checkArgument;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.ByteOrder;
@@ -42,6 +36,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.RandomAccess;
 import java.util.concurrent.ArrayBlockingQueue;
+
+import com.google.common.collect.Iterables;
+import com.google.common.primitives.Primitives;
+
+import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
+import edu.mit.streamjit.impl.blob.PeekableBuffer;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.NIOBuffers;
 
 /**
  * A source of input to a stream graph.
@@ -260,5 +264,54 @@ public class Input<I> {
 				};
 			}
 		});
+	}
+
+	private static class TextFileBuffer extends AbstractReadOnlyBuffer {
+
+		final BufferedReader reader;
+		String next;
+
+		TextFileBuffer(Path path) throws IOException {
+			this.reader = new BufferedReader(new FileReader(path.toFile()));
+			next = reader.readLine();
+		}
+
+		@Override
+		public String read() {
+			String cur = next;
+			try {
+				next = reader.readLine();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return cur;
+		}
+
+		@Override
+		public int size() {
+			int size = next == null ? 0 : 1;
+			return size;
+		}
+	}
+
+	public static Input<String> fromTextFile(Path path) {
+		class TextFileInput extends InputBufferFactory {
+			final Path path;
+			TextFileInput(Path path) {
+				this.path = path;
+			}
+
+			@Override
+			public Buffer createReadableBuffer(int readerMinSize) {
+				Buffer b = null;
+				try {
+					b = new TextFileBuffer(path);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				return b;
+			}
+		}
+		return new Input<>(new TextFileInput(path));
 	}
 }
