@@ -409,7 +409,7 @@ public class Compiler2 {
 		try {
 			Schedule<ActorGroup> schedule = scheduleBuilder.build();
 			this.initSchedule = schedule.getSchedule();
-		} catch (Schedule2.ScheduleException ex) {
+		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find init schedule", ex);
 		}
 
