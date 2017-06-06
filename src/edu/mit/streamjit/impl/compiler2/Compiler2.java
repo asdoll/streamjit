@@ -44,6 +44,7 @@ import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Output;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitter;
@@ -339,9 +340,9 @@ public class Compiler2 {
 				int upstreamAdjust = g.schedule().get(upstream);
 				int downstreamAdjust = other.schedule().get(downstream);
 				scheduleBuilder.connect(g, other)
-						.push(e.push() * upstreamAdjust)
-						.pop(e.pop() * downstreamAdjust)
-						.peek(e.peek() * downstreamAdjust)
+						.push(e.push().max()* upstreamAdjust)
+						.pop(e.pop().max()* downstreamAdjust)
+						.peek(e.peek().max()* downstreamAdjust)
 						.bufferExactly(0);
 			}
 		}
@@ -364,16 +365,16 @@ public class Compiler2 {
 			scheduleBuilder.executeAtLeast(a, 1);
 		for (Storage s : g.internalEdges()) {
 			scheduleBuilder.connect(Iterables.getOnlyElement(s.upstream()), Iterables.getOnlyElement(s.downstream()))
-					.push(s.push())
-					.pop(s.pop())
-					.peek(s.peek())
+					.push(s.push().max())
+					.pop(s.pop().max())
+					.peek(s.peek().max())
 					.bufferExactly(0);
 		}
 
 		try {
 			Schedule<Actor> schedule = scheduleBuilder.build();
 			g.setSchedule(schedule.getSchedule());
-		} catch (Schedule.ScheduleException ex) {
+		} catch (Schedule2.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g+"\n"+scheduleBuilder.toString(), ex);
 		}
 	}
@@ -391,14 +392,14 @@ public class Compiler2 {
 			if (actorsToBeRemoved.contains(downstream) && false)
 				throughput = excessPeeks = 0;
 			else {
-				throughput = s.push() * upstreamAdjust * externalSchedule.get(upstream.group());
-				excessPeeks = Math.max(s.peek() - s.pop(), 0);
+				throughput = s.push().max() * upstreamAdjust * externalSchedule.get(upstream.group());
+				excessPeeks = Math.max(s.peek().max() - s.pop().max(), 0);
 			}
 			int initialDataSize = Iterables.getOnlyElement(s.initialData(), new Pair<>(ImmutableList.<Object>of(), (MethodHandle)null)).first.size();
 			scheduleBuilder.connect(upstream.group(), downstream.group())
-					.push(s.push() * upstreamAdjust)
-					.pop(s.pop() * downstreamAdjust)
-					.peek(s.peek() * downstreamAdjust)
+			.push(s.push().max()*upstreamAdjust)
+			.pop(s.pop().max()*downstreamAdjust)
+			.peek(s.peek().max()*downstreamAdjust)
 					.bufferAtLeast(throughput + excessPeeks - initialDataSize);
 		}
 
@@ -408,7 +409,7 @@ public class Compiler2 {
 		try {
 			Schedule<ActorGroup> schedule = scheduleBuilder.build();
 			this.initSchedule = schedule.getSchedule();
-		} catch (Schedule.ScheduleException ex) {
+		} catch (Schedule2.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find init schedule", ex);
 		}
 
@@ -418,7 +419,7 @@ public class Compiler2 {
 			Actor upstream = Iterables.getOnlyElement(s.upstream()), downstream = Iterables.getOnlyElement(s.downstream());
 			int upstreamExecutions = upstream.group().schedule().get(upstream) * initSchedule.get(upstream.group());
 			int downstreamExecutions = downstream.group().schedule().get(downstream) * initSchedule.get(downstream.group());
-			int liveItems = s.push() * upstreamExecutions - s.pop() * downstreamExecutions + s.initialDataIndices().size();
+			int liveItems = s.push().max() * upstreamExecutions - s.pop().max() * downstreamExecutions + s.initialDataIndices().size();
 			assert liveItems >= 0 : s;
 
 			int index = downstream.inputs().indexOf(s);
@@ -469,7 +470,7 @@ public class Compiler2 {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
 							inputIndices.set(j, inputIndices.get(j).andThen(t));
-							if (splitter.push(i) > 0) {
+							if (splitter.push(i).max() > 0) {
 								IndexFunction idxFxn = a.inputIndexFunctions().get(j);
 								int bulkSize = GeneralBinarySearch.binarySearch(idx -> idxFxn.applyAsInt(idx) < drainInfo.size(), 0);
 								int[] bulk = getBulk(bulkSize);
@@ -509,7 +510,7 @@ public class Compiler2 {
 		if (a.worker() instanceof RoundrobinSplitter || a.worker() instanceof WeightedRoundrobinSplitter) {
 			int[] weights = new int[a.outputs().size()];
 			for (int i = 0; i < weights.length; ++i)
-				weights[i] = a.push(i);
+				weights[i] = a.push(i).max();
 			return roundrobinTransferFunctions(weights);
 		} else if (a.worker() instanceof DuplicateSplitter) {
 			return Collections.nCopies(a.outputs().size(), IndexFunction.identity());
@@ -593,7 +594,7 @@ public class Compiler2 {
 		if (a.worker() instanceof RoundrobinJoiner || a.worker() instanceof WeightedRoundrobinJoiner) {
 			int[] weights = new int[a.inputs().size()];
 			for (int i = 0; i < weights.length; ++i)
-				weights[i] = a.pop(i);
+				weights[i] = a.pop(i).max();
 			return roundrobinTransferFunctions(weights);
 		} else
 			throw new AssertionError();
@@ -953,14 +954,17 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			for (int i = 0; i < a.outputs().size(); ++i) {
 				Storage s = a.outputs().get(i);
+				
 				if (s.isInternal()) continue;
-				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
+				int itemsWritten = a.push(i).max() * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.outputIndexFunctions().set(i, a.outputIndexFunctions().get(i).compose(new AdditionIndexFunction(itemsWritten)));
 			}
 			for (int i = 0; i < a.inputs().size(); ++i) {
+				
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
-				int itemsRead = a.pop(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
+				
+				int itemsRead = a.pop(i).max() * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.inputIndexFunctions().set(i, a.inputIndexFunctions().get(i).compose(new AdditionIndexFunction(itemsRead)));
 			}
 		}
@@ -968,22 +972,23 @@ public class Compiler2 {
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
 		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(EXTERNAL_STORAGE_STRATEGY.asFactory(config)));
+		
 		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, INTERNAL_STORAGE_STRATEGY.asFactory(config));
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
+		
 		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
 		for (int i = 0; i < maxNumCores; ++i) {
+			
 			ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
 					outputTransformers = ImmutableTable.builder();
 			for (Actor a : Iterables.filter(actors, WorkerActor.class)) {
 				for (int j = 0; j < a.inputs().size(); ++j) {
-//					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
-//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
 					inputTransformers.put(a, j, ift);
 				}
+				
+				
 				for (int j = 0; j < a.outputs().size(); ++j) {
-//					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
-//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
 					outputTransformers.put(a, j, ift);
 				}
 			}
@@ -991,8 +996,9 @@ public class Compiler2 {
 			ImmutableMap.Builder<ActorGroup, Integer> unrollFactors = ImmutableMap.builder();
 			for (ActorGroup g : groups) {
 				if (g.isTokenGroup()) continue;
-				IntParameter param = config.getParameter(String.format("UnrollCore%dGroup%d", i, g.id()), IntParameter.class);
-				unrollFactors.put(g, param.getValue());
+				////to be continued
+				////
+				
 			}
 
 			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), (table, wa) -> SWITCHING_STRATEGY.createSwitch(table, wa, config), unrollFactors.build(), inputTransformers.build(), outputTransformers.build()));
@@ -1045,13 +1051,12 @@ public class Compiler2 {
 			retval = new NopReadInstruction(a.token());
 		else if (cs instanceof PeekableBufferConcreteStorage)
 			retval = new PeekReadInstruction(a, count);
-		else if (!s.type().isPrimitive() &&
+		else if (s.type().isPrimitive() != true &&
 				cs instanceof BulkWritableConcreteStorage &&
 				contiguouslyIncreasing(idxFxn, 0, count)) {
 			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
 		} else
 			retval = new TokenReadInstruction(a, cs, count);
-//		System.out.println("Made a "+retval+" for "+a.token());
 		retval.init(precreatedBuffers);
 		return retval;
 	}
@@ -1069,7 +1074,6 @@ public class Compiler2 {
 			retval = new BulkWriteInstruction(a, (BulkReadableConcreteStorage)cs, count);
 		} else
 			retval = new TokenWriteInstruction(a, cs, count);
-//		System.out.println("Made a "+retval+" for "+a.token());
 		retval.init(precreatedBuffers);
 		return retval;
 	}
@@ -1168,7 +1172,7 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			backup.put(a, ImmutableList.copyOf(a.outputIndexFunctions()));
 			for (int i = 0; i < a.outputs().size(); ++i) {
-				if (a.push(i) == 0) continue; //No writes -- nothing to adjust.
+				if (a.push(i).max() == 0) continue; //No writes -- nothing to adjust.
 				Storage s = a.outputs().get(i);
 				if (s.isInternal())
 					continue;
