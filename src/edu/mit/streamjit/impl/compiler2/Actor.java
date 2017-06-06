@@ -30,6 +30,8 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
+
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +84,7 @@ public abstract class Actor implements Comparable<Actor> {
 
 	public final boolean isPeeking() {
 		for (int i = 0; i < inputs().size(); ++i)
-			if (peek(i) > pop(i))
+			if (peek(i).max() > pop(i).max())
 				return true;
 		return false;
 	}
@@ -111,11 +113,11 @@ public abstract class Actor implements Comparable<Actor> {
 		return downstream;
 	}
 
-	public abstract int peek(int input);
+	public abstract Rate peek(int input);
 
-	public abstract int pop(int input);
+	public abstract Rate pop(int input);
 
-	public abstract int push(int output);
+	public abstract Rate push(int output);
 
 	/**
 	 * Returns the number of items peeked at but not popped from the given input
@@ -124,7 +126,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * @return the number of items peeked but not popped
 	 */
 	public int excessPeeks(int input) {
-		return Math.max(0, peek(input) - pop(input));
+		return Math.max(0, peek(input).max() - pop(input).max());
 	}
 
 	/**
@@ -137,7 +139,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * the given iteration
 	 */
 	public ContiguousSet<Integer> peeks(int input, int iteration) {
-		return ContiguousSet.create(Range.closedOpen(iteration * pop(input), (iteration + 1) * pop(input) + excessPeeks(input)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iteration * pop(input).max(), (iteration + 1) * pop(input).max() + excessPeeks(input)), DiscreteDomain.integers());
 	}
 
 	/**
@@ -170,7 +172,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	public ContiguousSet<Integer> peeks(int input, ContiguousSet<Integer> iterations) {
 		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
-		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input) + excessPeeks(input)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input).max(), (iterations.last() + 1) * pop(input).max() + excessPeeks(input)), DiscreteDomain.integers());
 	}
 
 	/**
@@ -195,7 +197,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iteration
 	 */
 	public ContiguousSet<Integer> pops(int input, int iteration) {
-		return ContiguousSet.create(Range.closedOpen(iteration * pop(input), (iteration + 1) * pop(input)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iteration * pop(input).max(), (iteration + 1) * pop(input).max()), DiscreteDomain.integers());
 	}
 
 	/**
@@ -226,7 +228,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	public ContiguousSet<Integer> pops(int input, ContiguousSet<Integer> iterations) {
 		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
-		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input).max(), (iterations.last() + 1) * pop(input).max()), DiscreteDomain.integers());
 	}
 
 	/**
@@ -250,7 +252,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iteration
 	 */
 	public ContiguousSet<Integer> pushes(int output, int iteration) {
-		return ContiguousSet.create(Range.closedOpen(iteration * push(output), (iteration + 1) * push(output)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iteration * push(output).max(), (iteration + 1) * push(output).max()), DiscreteDomain.integers());
 	}
 
 	/**
@@ -281,7 +283,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	public ContiguousSet<Integer> pushes(int output, ContiguousSet<Integer> iterations) {
 		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
-		return ContiguousSet.create(Range.closedOpen(iterations.first() * push(output), (iterations.last() + 1) * push(output)), DiscreteDomain.integers());
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * push(output).max(), (iterations.last() + 1) * push(output).max()), DiscreteDomain.integers());
 	}
 
 	/**
