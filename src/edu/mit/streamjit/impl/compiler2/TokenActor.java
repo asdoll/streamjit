@@ -24,6 +24,7 @@ package edu.mit.streamjit.impl.compiler2;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import java.lang.reflect.ParameterizedType;
@@ -75,24 +76,24 @@ public final class TokenActor extends Actor {
 	}
 
 	@Override
-	public int peek(int input) {
+	public Rate peek(int input) {
 		checkState(isOutput());
 		checkElementIndex(input, inputs().size());
-		return 0;
+		return Rate.create(0);
 	}
 
 	@Override
-	public int pop(int input) {
+	public Rate pop(int input) {
 		checkState(isOutput());
 		checkElementIndex(input, inputs().size());
-		return 1;
+		return Rate.create(1);
 	}
 
 	@Override
-	public int push(int output) {
+	public Rate push(int output) {
 		checkState(isInput());
 		checkElementIndex(output, outputs().size());
-		return 1;
+		return Rate.create(1);
 	}
 
 	@Override
