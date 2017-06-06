@@ -1,4 +1,4 @@
-package windowing;
+package edu.mit.streamjit.test.apps.windowing;
 
 public class Tuple4<T0, T1, T2, T3> {
 

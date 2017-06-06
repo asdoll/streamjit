@@ -1,4 +1,4 @@
-package windowing;
+package edu.mit.streamjit.test.apps.windowing;
 
 
 /**
