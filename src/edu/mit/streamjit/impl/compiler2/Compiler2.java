@@ -996,8 +996,8 @@ public class Compiler2 {
 			ImmutableMap.Builder<ActorGroup, Integer> unrollFactors = ImmutableMap.builder();
 			for (ActorGroup g : groups) {
 				if (g.isTokenGroup()) continue;
-				////to be continued
-				////
+				IntParameter param = config.getParameter(String.format("UnrollCore%dGroup%d", i, g.id()), IntParameter.class);
+				unrollFactors.put(g, param.getValue());
 				
 			}
 
