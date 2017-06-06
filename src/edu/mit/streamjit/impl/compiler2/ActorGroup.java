@@ -369,21 +369,21 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		Object pop, push;
 		if (base.type().parameterType(0).equals(int.class)) {
 			assert a.inputs().size() == 1;
-			pop = a.pop(0);
+			pop = a.pop(0).max();
 		} else {
 			int[] readIndices = new int[a.inputs().size()];
 			for (int m = 0; m < a.inputs().size(); ++m)
-				readIndices[m] = firstIteration * subiterations * a.pop(m);
+				readIndices[m] = firstIteration * subiterations * a.pop(m).max();
 			pop = readIndices.clone();
 			requiredCopies.put(readIndices, (int[])pop);
 		}
 		if (base.type().parameterType(1).equals(int.class)) {
 			assert a.outputs().size() == 1;
-			push = a.push(0);
+			push = a.push(0).max();
 		} else {
 			int[] writeIndices = new int[a.outputs().size()];
 			for (int m = 0; m < a.outputs().size(); ++m)
-				writeIndices[m] = firstIteration * subiterations * a.push(m);
+				writeIndices[m] = firstIteration * subiterations * a.push(m).max();
 			push = writeIndices.clone();
 			requiredCopies.put(writeIndices, (int[])push);
 		}
