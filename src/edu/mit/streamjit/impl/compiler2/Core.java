@@ -59,13 +59,13 @@ public class Core {
 			allocations.add(Pair.make(group, iterations));
 	}
 
-	public MethodHandle code() {
+	public List<MethodHandle> code() {
 		//TODO: ActorGroup ordering parameters: accumulate a
 		//List<Pair<ActorGroup, MethodHandle>>, then sort before semicolon(code).
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations)
 			code.add(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers));
-		return Combinators.semicolon(code);
+		return code;
 	}
 
 	/**
