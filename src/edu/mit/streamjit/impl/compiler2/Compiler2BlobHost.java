@@ -125,6 +125,7 @@ public class Compiler2BlobHost implements Blob {
 	private final Phaser barrier;
 	private volatile Runnable drainCallback;
 	private volatile DrainData drainData;
+	private ImmutableList<MethodStorage> ms;
 
 	public Compiler2BlobHost(ImmutableSet<Worker<?, ?>> workers,
 			Configuration configuration,
@@ -132,6 +133,7 @@ public class Compiler2BlobHost implements Blob {
 			ImmutableSortedSet<Token> outputTokens,
 			MethodHandle initCode,
 			ImmutableList<MethodHandle> steadyStateCode,
+			ImmutableList<MethodStorage> ms,
 			ImmutableList<MethodHandle> storageAdjusts,
 			List<ReadInstruction> initReadInstructions,
 			List<WriteInstruction> initWriteInstructions,
@@ -154,6 +156,7 @@ public class Compiler2BlobHost implements Blob {
 		this.writeInstructions = ImmutableList.copyOf(writeInstructions);
 		this.drainInstructions = ImmutableList.copyOf(drainInstructions);
 		this.precreatedBuffers = precreatedBuffers;
+		this.ms = ms;
 
 		this.collectTimings = config.getExtraData("timings") != null ? (Boolean)config.getExtraData("timings") : false;
 
@@ -256,6 +259,18 @@ public class Compiler2BlobHost implements Blob {
 
 	private void mainLoop(MethodHandle coreCode) throws Throwable {
 		try {
+			MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
+					doInit = DO_INIT.bindTo(this),
+					doAdjust = DO_ADJUST.bindTo(this),
+					mainLoopNop = MAIN_LOOP_NOP.bindTo(this);
+			ProxyFactory pf = new ProxyFactory(new ModuleClassLoader(new Module()));
+			ImmutableList.Builder<Runnable> coreCodeRunnables = ImmutableList.builder();
+			for (int i = 0; i < this.steadyStateCode.size(); ++i) {
+				MethodHandle ssc = this.steadyStateCode.get(i);
+				MethodHandle code = sp1.guardWithTest(mainLoopNop, sp2.guardWithTest(mainLoop.bindTo(ssc), NOP));
+				coreCodeRunnables.add(pf.createProxy("Proxy"+i, ImmutableMap.of("run", code), Runnable.class));
+			}
+			ImmutableList<Runnable> cCode = coreCodeRunnables.build();
 			coreCode.invokeExact();
 			barrier.arriveAndAwaitAdvance();
 		} catch (Throwable ex) {

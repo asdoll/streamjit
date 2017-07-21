@@ -127,6 +127,8 @@ public class Compiler2 {
 	private final Configuration config;
 	private final int maxNumCores;
 	private final DrainData initialState;
+	
+	private ImmutableList<MethodStorage> ms;
 	/**
 	 * If the blob is the entire graph, this is the overall input; else null.
 	 */
@@ -946,7 +948,11 @@ public class Compiler2 {
 				else
 					initWriteInstructions.add(makeWriteInstruction(ta, storage, executions));
 			}
-		this.initCode = Combinators.semicolon(initCore.code());
+		List<MethodHandle> code = new ArrayList<>();
+		for( MethodStorage ms1:initCore.code()){
+			code.add(ms1.code);
+		}
+		this.initCode = Combinators.semicolon(code);
 
 		restoreOutputIndexFunctions(indexFxnBackup);
 	}
@@ -1040,8 +1046,14 @@ public class Compiler2 {
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
 		for (Core c : ssCores)
-			if (!c.isEmpty())
-				steadyStateCodeBuilder.add(c.code());
+			if (!c.isEmpty()){
+				List<MethodHandle> code = new ArrayList<>();
+				for( MethodStorage ms1:c.code()){
+					code.add(ms1.code);
+					ms.add(ms1);
+				}
+				steadyStateCodeBuilder.add(Combinators.semicolon(code));
+			}
 		//Provide at least one core of code, even if it doesn't do anything; the
 		//blob host will still copy inputs to outputs.
 		this.steadyStateCode = steadyStateCodeBuilder.build();
@@ -1707,7 +1719,7 @@ public class Compiler2 {
 		return new Compiler2BlobHost(workers, config,
 				inputTokens.build(), outputTokens.build(),
 				initCode, steadyStateCode,
-				storageAdjusts.build(),
+				ms, storageAdjusts.build(),
 				initReadInstructions, initWriteInstructions, migrationInstructions,
 				readInstructions, writeInstructions, drainInstructions,
 				precreatedBuffers);
