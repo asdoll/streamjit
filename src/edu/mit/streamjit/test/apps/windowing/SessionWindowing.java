@@ -24,6 +24,7 @@ import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
@@ -55,7 +56,7 @@ public class SessionWindowing {
 	public static class Session extends Filter<String, String> {
 
 		public Session() {
-			super(1, 1);
+			super(Rate.create(1), Rate.create(0,1),Rate.create(0));
 			
 		}
 

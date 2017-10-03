@@ -16,6 +16,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.util.Pair;
@@ -54,7 +55,7 @@ long et = System.currentTimeMillis();
 	public static class WordCount extends Filter<String, String> {
 		
 		public WordCount() {
-			super(1, 1);
+			super(Rate.create(1), Rate.create(0,1),Rate.create(0));
 		}
 
 		@Override

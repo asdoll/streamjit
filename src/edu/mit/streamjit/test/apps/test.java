@@ -95,44 +95,31 @@ public final class test {
 	private static final class Example1 extends Filter<String, Integer> {
 
 		public Example1() {
-			super(Rate.create(50),Rate.create(50),Rate.create(0));
+			super(Rate.create(3),Rate.create(4),Rate.create(0));
 			
 		}
 
 		@Override
 		public void work() {
-			Random a=new Random();
-			for(int i=0;i<50;i++){
-				if(a.nextFloat()<0.5){
+			for(int i=0;i<3;i++){
 					int t = Integer.parseInt(pop());
-					if(a.nextFloat()<0.2){
 						push(t);
-					}
 				}
-			}
-			if(a.nextFloat()<0.5){
-				push(51);
-			}
+				push(-1);
 		}
 		
 	}
 	private static final class Example2 extends Filter<Integer, Integer> {
-		private Example2() {
-			super(Rate.create(50),Rate.create(50),Rate.create(0));
+		public Example2() {
+			super(Rate.create(3),Rate.create(3),Rate.create(0));
 		}
 
 		@Override
 		public void work() {
-			Random a=new Random();
-			for(int i=0;i<50;i++){
-				if(a.nextFloat()<0.3){
-					int t = pop();
-					if(a.nextFloat()<0.5){
-						push(t+1);
-					}
+			for(int i=0;i<3;i++){
+					int t = pop()+1;
+						push(t);
 				}
-			}
-			push(61);
 		}
 	}
 	private static final class Example3 extends Filter<Integer, Integer> {

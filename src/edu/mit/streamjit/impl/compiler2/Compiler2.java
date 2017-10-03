@@ -358,12 +358,12 @@ public class Compiler2 {
 		}
 		
 		ImmutableSet<ActorGroup> k = externalSchedule.keySet();
-		ImmutableMap<ActorGroup, Integer> tmp = externalSchedule;
+		Map<ActorGroup, Integer> tmp = externalSchedule;
 		tmp.clear();
 		for (ActorGroup j:k){
 			tmp.put(j, 1);
 		}
-		externalSchedule = tmp;
+		externalSchedule = (ImmutableMap)tmp;
 	}
 
 	/**
