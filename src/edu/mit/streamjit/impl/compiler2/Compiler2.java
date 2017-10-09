@@ -128,7 +128,7 @@ public class Compiler2 {
 	private final int maxNumCores;
 	private final DrainData initialState;
 	
-	private ImmutableList<MethodStorage> ms;
+	private List<MethodStorage> ms;
 	/**
 	 * If the blob is the entire graph, this is the overall input; else null.
 	 */
@@ -273,37 +273,37 @@ public class Compiler2 {
 		for (Actor a : actors)
 			actorGroups.add(ActorGroup.of(a));
 
-//		//Fuse as much as possible.
-//		just_fused: do {
-//			try_fuse: for (Iterator<ActorGroup> it = actorGroups.iterator(); it.hasNext();) {
-//				ActorGroup g = it.next();
-//				if (g.isTokenGroup())
-//					continue try_fuse;
-//				for (ActorGroup pg : g.predecessorGroups())
-//					if (pg.isTokenGroup())
-//						continue try_fuse;
-//				if (g.isPeeking() || g.predecessorGroups().size() > 1)
-//					continue try_fuse;
-//				for (Storage s : g.inputs())
-//					if (!s.initialData().isEmpty())
-//						continue try_fuse;
-//
-//				//We are assuming FusionStrategies are all happy to work
-//				//group-by-group.  If later we want to make all decisions at
-//				//once, we'll refactor existing FusionStrategies to inherit from
-//				//a base class containing this loop.
-//				if (!FUSION_STRATEGY.fuseUpward(g, config))
-//					continue try_fuse;
-//
-//				ActorGroup gpred = Iterables.getOnlyElement(g.predecessorGroups());
-//				ActorGroup fusedGroup = ActorGroup.fuse(g, gpred);
-//				it.remove();
-//				actorGroups.remove(gpred);
-//				actorGroups.add(fusedGroup);
-//				continue just_fused;
-//			}
-//			break;
-//		} while (true);
+		//Fuse as much as possible.
+		just_fused: do {
+			try_fuse: for (Iterator<ActorGroup> it = actorGroups.iterator(); it.hasNext();) {
+				ActorGroup g = it.next();
+				if (g.isTokenGroup())
+					continue try_fuse;
+				for (ActorGroup pg : g.predecessorGroups())
+					if (pg.isTokenGroup())
+						continue try_fuse;
+				if (g.isPeeking() || g.predecessorGroups().size() > 1)
+					continue try_fuse;
+				for (Storage s : g.inputs())
+					if (!s.initialData().isEmpty())
+						continue try_fuse;
+
+				//We are assuming FusionStrategies are all happy to work
+				//group-by-group.  If later we want to make all decisions at
+				//once, we'll refactor existing FusionStrategies to inherit from
+				//a base class containing this loop.
+				if (!FUSION_STRATEGY.fuseUpward(g, config))
+					continue try_fuse;
+
+				ActorGroup gpred = Iterables.getOnlyElement(g.predecessorGroups());
+				ActorGroup fusedGroup = ActorGroup.fuse(g, gpred);
+				it.remove();
+				actorGroups.remove(gpred);
+				actorGroups.add(fusedGroup);
+				continue just_fused;
+			}
+			break;
+		} while (true);
 
 		this.groups = ImmutableSortedSet.copyOf(actorGroups);
 
@@ -351,19 +351,20 @@ public class Compiler2 {
 		}
 		int multiplier = config.getParameter("multiplier", IntParameter.class).getValue();
 		scheduleBuilder.multiply(multiplier);
+
 		try {
 			externalSchedule = scheduleBuilder.build().getSchedule();
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find external schedule; mult = "+multiplier, ex);
 		}
 		
-		ImmutableSet<ActorGroup> k = externalSchedule.keySet();
-		Map<ActorGroup, Integer> tmp = externalSchedule;
-		tmp.clear();
-		for (ActorGroup j:k){
-			tmp.put(j, 1);
-		}
-		externalSchedule = (ImmutableMap)tmp;
+//		ImmutableSet<ActorGroup> k = externalSchedule.keySet();
+//		Map<ActorGroup, Integer> tmp = new HashMap<>();
+//		tmp.clear();
+//		for (ActorGroup j:k){
+//			tmp.put(j, 1);
+//		}
+//		externalSchedule = ImmutableMap.copyOf(tmp);
 	}
 
 	/**
@@ -459,13 +460,13 @@ public class Compiler2 {
 			totalBuffering += i;
 //		System.out.println("total items buffered "+totalBuffering);
 		
-		ImmutableSet<ActorGroup> k = initSchedule.keySet();
-		ImmutableMap<ActorGroup, Integer> tmp = initSchedule;
-		tmp.clear();
-		for (ActorGroup j:k){
-			tmp.put(j, 1);
-		}
-		initSchedule = tmp;
+//		ImmutableSet<ActorGroup> k = initSchedule.keySet();
+//		Map<ActorGroup, Integer> tmp = new HashMap<>();
+//		tmp.clear();
+//		for (ActorGroup j:k){
+//			tmp.put(j, 1);
+//		}
+//		initSchedule = ImmutableMap.copyOf(tmp);
 	}
 
 	private void splitterRemoval() {
@@ -1045,6 +1046,7 @@ public class Compiler2 {
 				}
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
+		ms = new ArrayList<>();
 		for (Core c : ssCores)
 			if (!c.isEmpty()){
 				List<MethodHandle> code = new ArrayList<>();
@@ -1719,7 +1721,7 @@ public class Compiler2 {
 		return new Compiler2BlobHost(workers, config,
 				inputTokens.build(), outputTokens.build(),
 				initCode, steadyStateCode,
-				ms, storageAdjusts.build(),
+				ImmutableList.copyOf(ms), storageAdjusts.build(),
 				initReadInstructions, initWriteInstructions, migrationInstructions,
 				readInstructions, writeInstructions, drainInstructions,
 				precreatedBuffers);
