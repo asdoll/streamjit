@@ -55,7 +55,7 @@ long et = System.currentTimeMillis();
 	public static class WordCount extends Filter<String, String> {
 		
 		public WordCount() {
-			super(Rate.create(1), Rate.create(0,1),Rate.create(0));
+			super(Rate.create(1), Rate.create(0,slide),Rate.create(0));
 		}
 
 		@Override

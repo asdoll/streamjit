@@ -57,7 +57,7 @@ long et = System.currentTimeMillis();
 		int num;
 
 		public CarData(int number) {
-			super(Rate.create(1), Rate.create(0,1),Rate.create(0));
+			super(Rate.create(1), Rate.create(0,evictionSec),Rate.create(0));
 			num = number;
 		}
 

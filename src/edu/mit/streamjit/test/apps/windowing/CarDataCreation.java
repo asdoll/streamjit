@@ -48,7 +48,7 @@ public class CarDataCreation {
 
 		public static void run() throws InterruptedException, IOException {
 
-			while (isRunning<=100000) {
+			while (isRunning<=100) {
 				Thread.sleep(100);
 				for (int carId = 0; carId < speeds.length; carId++) {
 					if (rand.nextBoolean()) {
