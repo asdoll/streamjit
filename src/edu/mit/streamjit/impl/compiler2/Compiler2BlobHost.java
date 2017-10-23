@@ -175,6 +175,8 @@ public class Compiler2BlobHost implements Blob {
 		ImmutableList.Builder<Runnable> coreCodeRunnables = ImmutableList.builder();
 		for (int i = 0; i < this.steadyStateCode.size(); ++i) {
 			MethodHandle ssc = this.steadyStateCode.get(i);
+			MethodHandle code = sp1.guardWithTest(mainLoopNop, sp2.guardWithTest(mainLoop.bindTo(ssc), NOP));
+			coreCodeRunnables.add(pf.createProxy("Proxy"+i, ImmutableMap.of("run", code), Runnable.class));
 		}
 		this.coreCode = coreCodeRunnables.build();
 		MethodHandle throwAE = THROW_NEW_ASSERTION_ERROR.bindTo("Can't happen! Barrier action reached after draining?");
@@ -257,7 +259,20 @@ public class Compiler2BlobHost implements Blob {
 
 	private void mainLoop(MethodHandle coreCode) throws Throwable {
 		try {
+			MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
+					doInit = DO_INIT.bindTo(this),
+					doAdjust = DO_ADJUST.bindTo(this),
+					mainLoopNop = MAIN_LOOP_NOP.bindTo(this);
+			ProxyFactory pf = new ProxyFactory(new ModuleClassLoader(new Module()));
+			ImmutableList.Builder<Runnable> coreCodeRunnables = ImmutableList.builder();
+			for (int i = 0; i < this.steadyStateCode.size(); ++i) {
+				MethodHandle ssc = this.steadyStateCode.get(i);
+				MethodHandle code = sp1.guardWithTest(mainLoopNop, sp2.guardWithTest(mainLoop.bindTo(ssc), NOP));
+				coreCodeRunnables.add(pf.createProxy("Proxy"+i, ImmutableMap.of("run", code), Runnable.class));
 			}
+			ImmutableList<Runnable> cCode = coreCodeRunnables.build();
+			coreCode.invokeExact();
+			barrier.arriveAndAwaitAdvance();
 		} catch (Throwable ex) {
 			barrier.forceTermination();
 			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
