@@ -66,8 +66,7 @@ public class Core {
 		List<MethodStorage> ms = new ArrayList<>();
 		for (Pair<ActorGroup, Range<Integer>> p : allocations){
 			code.add(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers));
-			ms.add(new MethodStorage(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers),p.first,storage));
-		}
+			}
 		return ms;
 	}
 

@@ -69,10 +69,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 1/15/2014
  */
 public final class test {
+	static final int MAX_ROUND = 100;
+	
 	public static void main(String[] args) throws InterruptedException {
 		// Benchmarker.runBenchmarks(new FMRadioBenchmarkProvider(), new DebugStreamCompiler()).get(0).print(System.out);
 		StreamCompiler sc = new Compiler2StreamCompiler();
-		OneToOneElement<String, Integer> fmradio = new TestPipeline();
+		OneToOneElement<String, Integer> fmradio = new Compare();
 		
 		Path path = Paths.get("data/test.in");
 		Input<String> input = Input.fromTextFile(path);
@@ -81,93 +83,93 @@ public final class test {
 	}
 	
 	
-	private static final class TestPipeline extends Pipeline<String, Integer> {
-		private TestPipeline() {
-			add(new Example1());
-			add(new Example2());
-//			Splitjoin<Integer, Integer> sj = new Splitjoin<Integer,Integer>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>());
-//			sj.add(new Example3());
-//			sj.add(new Example4());
-//			add(sj);
+	private static final class Compare extends Pipeline<String, Integer> {
+		private Compare() {
+			Splitjoin<String, Integer> sj = new Splitjoin<String,Integer>(new RoundrobinSplitter<String>(), new RoundrobinJoiner<Integer>());
+			sj.add(new Less());
+			sj.add(new Larger());
+			sj.add(new EqualPipline());
+			add(sj);
 		}
 	}
 	
-	private static final class Example1 extends Filter<String, Integer> {
+	private static final class Less extends Filter<String, Integer> {
 
-		public Example1() {
-			super(Rate.create(3),Rate.create(4),Rate.create(0));
+		public Less() {
+			super(Rate.create(0,MAX_ROUND),Rate.create(0,MAX_ROUND),Rate.create(0));
 			
 		}
 
 		@Override
 		public void work() {
-			for(int i=0;i<3;i++){
-					int t = Integer.parseInt(pop());
-						push(t);
-				}
-				push(-1);
+			Random seed = new Random();
+			seed.setSeed(System.currentTimeMillis());
+			int number=seed.nextInt(MAX_ROUND);
+			for(int i=0;i<number;i++){
+				push(Integer.parseInt(pop())-1);
+			}
 		}
 		
 	}
-	private static final class Example2 extends Filter<Integer, Integer> {
-		public Example2() {
-			super(Rate.create(3),Rate.create(3),Rate.create(0));
+	private static final class Larger extends Filter<String, Integer> {
+
+		public Larger() {
+			super(Rate.create(0,MAX_ROUND),Rate.create(0,MAX_ROUND),Rate.create(0));
+			
 		}
 
 		@Override
 		public void work() {
-			for(int i=0;i<3;i++){
-					int t = pop()+1;
-						push(t);
-				}
+			Random seed = new Random();
+			seed.setSeed(System.currentTimeMillis());
+			int number=seed.nextInt(MAX_ROUND);
+			for(int i=0;i<number;i++){
+				push(Integer.parseInt(pop())+1);
+			}
+		}
+		
+	}
+	private static final class EqualPipline extends Pipeline<String, Integer> {
+		private EqualPipline() {
+			Splitjoin<String, Integer> sj = new Splitjoin<String,Integer>(new RoundrobinSplitter<String>(), new RoundrobinJoiner<Integer>());
+			sj.add(new Smaller());
+			sj.add(new Bigger());
+			add(sj);
 		}
 	}
-	private static final class Example3 extends Filter<Integer, Integer> {
-
-		public Example3() {
-			super(Rate.create(0,20),Rate.create(0,31),Rate.create(0));
+	private static final class Smaller extends Filter<String, Integer> {
+		public Smaller() {
+			super(Rate.create(0,MAX_ROUND),Rate.create(0,MAX_ROUND),Rate.create(0));
 			
 		}
 
 		@Override
-		public void work() {		
-			Random a=new Random();
-			a.setSeed(new Date().getTime());
-			for(int i=0;i<20;i++){
-				if(a.nextFloat()>0.5){
-					int t = pop();
-					push(t);
-				}
-					push(i);
+		public void work() {
+			Random seed = new Random();
+			seed.setSeed(System.currentTimeMillis());
+			int number=seed.nextInt(MAX_ROUND);
+			for(int i=0;i<number;i++){
+				push(Integer.parseInt(pop())/2);
 			}
-			push(71);
 		}
-		
 	}
-			
-	private static final class Example4 extends Filter<Integer, Integer> {
+	private static final class Bigger extends Filter<String, Integer> {
 
-		public Example4() {
-			super(Rate.create(0,30),Rate.create(0,61),Rate.create(0));
+		public Bigger() {
+			super(Rate.create(0,MAX_ROUND),Rate.create(0,MAX_ROUND),Rate.create(0));
 			
 		}
 
 		@Override
-		public void work() {		
-			Random a=new Random();
-			a.setSeed(new Date().getTime());
-			for(int i=0;i<30;i++){
-				if(a.nextFloat()>0.5){
-					int t = pop();
-					if(a.nextFloat()>0.5){
-						push(t);
-						push(t+1);
-					}
-				}
+		public void work() {
+			Random seed = new Random();
+			seed.setSeed(System.currentTimeMillis());
+			int number=seed.nextInt(MAX_ROUND);
+			for(int i=0;i<number;i++){
+				push(Integer.parseInt(pop())*2);
 			}
-			push(81);
 		}
 		
-	}	
+	}
 	
 }

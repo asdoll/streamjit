@@ -267,13 +267,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				bindActorsToStorage(iterations, storage, switchFactory, inputTransformers, outputTransformers);
 
 		int totalIterations = iterations.upperEndpoint() - iterations.lowerEndpoint();
-		unrollFactor = Math.min(unrollFactor, totalIterations);
-		int unrolls = (totalIterations/unrollFactor);
-		int unrollEndpoint = iterations.lowerEndpoint() + unrolls*unrollFactor;
-		MethodHandle overall = Combinators.semicolon(
-				makeGroupLoop(Range.closedOpen(iterations.lowerEndpoint(), unrollEndpoint), unrollFactor, withRWHandlesBound),
-				makeGroupLoop(Range.closedOpen(unrollEndpoint, iterations.upperEndpoint()), 1, withRWHandlesBound)
-		);
+
 		return overall;
 	}
 
@@ -300,11 +294,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			} else
 				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
 						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0).asHandle(), () -> a.peeks(0, iterations)))
-						.asType(readHandleType);
-
-			assert a.outputs().size() > 0 : a;
-			MethodType writeHandleType = MethodType.methodType(void.class, int.class, wa.outputType().getRawType());
-			MethodHandle write;
+						.asType(readHandleType);			MethodHandle write;
 			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				IntStream.range(0, a.outputs().size()).forEachOrdered(i ->
